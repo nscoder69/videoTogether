@@ -1,11 +1,8 @@
 package com.videotogether.controller;
 
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +20,6 @@ import java.util.UUID;
 @RequestMapping("/api/video")
 public class VideoController {
 
-    // Store videos in a temporary directory for now
     private final String uploadDir = System.getProperty("java.io.tmpdir") + "/videotogether_uploads/";
 
     public VideoController() {
@@ -41,7 +38,6 @@ public class VideoController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Generate a unique filename to avoid collisions
             String originalFilename = file.getOriginalFilename();
             String extension = "";
             if (originalFilename != null && originalFilename.lastIndexOf(".") > 0) {
@@ -50,7 +46,8 @@ public class VideoController {
             String fileName = UUID.randomUUID().toString() + extension;
             
             Path path = Paths.get(uploadDir + fileName);
-            Files.write(path, file.getBytes());
+            // Transfer stream directly to file to prevent OutOfMemoryError on large files
+            file.transferTo(path.toFile());
 
             response.put("fileName", fileName);
             response.put("streamUrl", "/api/video/stream/" + fileName);
@@ -63,28 +60,40 @@ public class VideoController {
     }
 
     @GetMapping("/stream/{fileName}")
-    public ResponseEntity<Resource> streamVideo(@PathVariable String fileName) {
+    public ResponseEntity<ResourceRegion> streamVideo(@PathVariable String fileName, @RequestHeader HttpHeaders headers) throws IOException {
         File file = new File(uploadDir + fileName);
         if (!file.exists()) {
             return ResponseEntity.notFound().build();
         }
 
-        Resource resource = new FileSystemResource(file);
+        UrlResource video = new UrlResource(file.toURI());
+        ResourceRegion region = getResourceRegion(video, headers);
         
-        // Spring Boot automatically handles Range requests when returning a Resource
-        // but we can explicitly set the content type
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         try {
             String mimeType = Files.probeContentType(file.toPath());
             if (mimeType != null) {
                 mediaType = MediaType.parseMediaType(mimeType);
             }
-        } catch (IOException e) {
-            // Ignore, default to octet stream
-        }
+        } catch (IOException e) {}
 
-        return ResponseEntity.ok()
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
                 .contentType(mediaType)
-                .body(resource);
+                .body(region);
+    }
+
+    private ResourceRegion getResourceRegion(UrlResource video, HttpHeaders headers) throws IOException {
+        long contentLength = video.contentLength();
+        List<HttpRange> ranges = headers.getRange();
+        if (!ranges.isEmpty()) {
+            HttpRange range = ranges.get(0);
+            long start = range.getRangeStart(contentLength);
+            long end = range.getRangeEnd(contentLength);
+            long rangeLength = Math.min(1024 * 1024, end - start + 1); // 1MB chunks
+            return new ResourceRegion(video, start, rangeLength);
+        } else {
+            long rangeLength = Math.min(1024 * 1024, contentLength);
+            return new ResourceRegion(video, 0, rangeLength);
+        }
     }
 }

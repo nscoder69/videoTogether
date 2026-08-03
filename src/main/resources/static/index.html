@@ -2067,10 +2067,10 @@
             if (isHost) setStatus('ok', 'Broadcasting');
         }
 
-        // ── Host: read file → direct peer-to-peer sync ────────────────────
+        // ── Host: read file → direct server streaming + P2P fallback ────────────────────
         async function loadAndStreamFile(file, resumeTime = 0) {
-            const url = URL.createObjectURL(file);
-            setPlayerSrc(url, file.type, resumeTime);
+            const localUrl = URL.createObjectURL(file);
+            setPlayerSrc(localUrl, file.type, resumeTime);
             sysMsg(`"${file.name}" loaded.${resumeTime > 0 ? ' Resuming at ' + fmt(resumeTime) + '.' : ''}`);
             
             if (!sharedListenersAttached) {
@@ -2078,7 +2078,28 @@
             }
             startHeartbeat();
 
-            // If guests are already connected, start sending
+            // Upload to server for fast HTTP 206 Partial Content byte-range streaming to guests
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch('/api/video/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.streamUrl) {
+                        hostStreamUrl = data.streamUrl;
+                        sysMsg('Server video stream ready. Guests will stream instantly via HTTP Byte-Range.', true);
+                        bcast({ type: 'stream_url', room: room.name, url: hostStreamUrl, mime: file.type });
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('Server upload failed, using WebRTC P2P fallback:', err);
+            }
+
+            // If guests are already connected and server stream not ready, send via WebRTC
             connections.forEach(conn => sendFileToConn(conn, file));
         }
 
@@ -2136,6 +2157,8 @@
                     if (room.ytId) {
                         const t = ytPlayer ? ytPlayer.getCurrentTime() : 0;
                         bcast({ type: 'yt_load', room: room.name, ytId: room.ytId, time: t, playing: false });
+                    } else if (hostStreamUrl) {
+                        bcast({ type: 'stream_url', room: room.name, url: hostStreamUrl, mime: hostFile ? hostFile.type : 'video/mp4' });
                     } else {
                         if (hostFile && senderConn) {
                             sendFileToConn(senderConn, hostFile);
@@ -2196,7 +2219,7 @@
                     setPlayerSrc(m.url, m.mime);
                     setStatus('ok', 'Host connected');
                     attachSharedListeners();
-                    bcast({ type: 'buffer_start', room: room.name });
+                    bcast({ type: 'buffer_end', room: room.name });
                     break;
 
                 case 'play':
