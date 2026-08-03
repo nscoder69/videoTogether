@@ -1265,15 +1265,15 @@
     <div id="authModal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1000; flex-direction:column; padding:30px;">
         <h2 id="authTitle" style="margin-bottom:20px;">Login</h2>
         <div class="fgroup">
-            <label>Username</label>
+            <label for="authUsername">Username</label>
             <input type="text" id="authUsername" autocomplete="off" style="margin-bottom:15px;">
         </div>
         <div class="fgroup" id="authProfilePicGroup" style="display:none;">
-            <label>Profile Picture (Optional)</label>
+            <label for="authProfilePic">Profile Picture (Optional)</label>
             <input type="file" id="authProfilePic" accept="image/*" style="margin-bottom:15px; width:100%; padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:var(--ff-body); font-size:.92rem; transition:all .25s;">
         </div>
         <div class="fgroup">
-            <label>Password</label>
+            <label for="authPassword">Password</label>
             <input type="password" id="authPassword" autocomplete="off" style="width:100%; padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:var(--ff-body); font-size:.92rem; transition:all .25s;">
         </div>
         <div class="form-actions" style="margin-top: 24px; flex-direction:row; justify-content:flex-end;">
@@ -1285,15 +1285,15 @@
     <div id="profileModal" class="glass" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:1000; flex-direction:column; padding:30px; width: 90%; max-width: 400px;">
         <h2 style="margin-bottom:20px;"><i class="fas fa-user-circle"></i> Profile</h2>
         <div class="fgroup">
-            <label>Username</label>
+            <label for="profUsername">Username</label>
             <input type="text" id="profUsername" autocomplete="off" style="margin-bottom:15px;">
         </div>
         <div class="fgroup">
-            <label>New Profile Picture</label>
+            <label for="profPic">New Profile Picture</label>
             <input type="file" id="profPic" accept="image/*" style="margin-bottom:15px; width:100%; padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:var(--ff-body); font-size:.92rem; transition:all .25s;">
         </div>
         <div class="fgroup">
-            <label>New Password (Optional)</label>
+            <label for="profPassword">New Password (Optional)</label>
             <input type="password" id="profPassword" placeholder="Leave blank to keep same" autocomplete="off" style="width:100%; padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:var(--ff-body); font-size:.92rem; transition:all .25s;">
         </div>
         <div class="form-actions" style="margin-top: 24px; flex-direction:row; justify-content:flex-end;">
@@ -1322,7 +1322,7 @@
                 <!-- CREATE -->
                 <div id="viewCreate">
                     <div class="fgroup">
-                        <label>Room Name</label>
+                        <label for="cRoomName">Room Name</label>
                         <input type="text" id="cRoomName" placeholder="e.g. MovieNight" autocomplete="off">
                     </div>
                     <!-- Media source tabs -->
@@ -1332,17 +1332,17 @@
                             <button class="media-tab active" id="tabYT" onclick="switchMediaTab('yt')"><i
                                     class="fab fa-youtube"></i> YouTube URL</button>
                             <button class="media-tab" id="tabFile" onclick="switchMediaTab('file')"><i
-                                    class="fas fa-upload"></i> Upload File</button>
+                                     class="fas fa-upload"></i> Upload File</button>
                         </div>
                     </div>
                     <div class="fgroup" id="ytGroup">
-                        <label>YouTube URL</label>
+                        <label for="cYTUrl">YouTube URL</label>
                         <input type="text" id="cYTUrl" placeholder="https://www.youtube.com/watch?v=..."
                             autocomplete="off">
                         <small>Paste any YouTube video link — playback is synced for everyone</small>
                     </div>
                     <div class="fgroup" id="fileGroup" style="display:none">
-                        <label>Upload Movie / Music</label>
+                        <label for="cFile">Upload Movie / Music</label>
                         <input type="file" id="cFile" accept="video/*,audio/*">
                         <small>MP4, WebM, MKV, MP3, WAV — streamed directly to your guest</small>
                     </div>
@@ -1356,11 +1356,11 @@
                 <!-- JOIN -->
                 <div id="viewJoin" style="display:none">
                     <div class="fgroup">
-                        <label>Room Name</label>
+                        <label for="jRoomName">Room Name</label>
                         <input type="text" id="jRoomName" placeholder="Ask the host for this" autocomplete="off">
                     </div>
                     <div class="fgroup">
-                        <label>Security Key</label>
+                        <label for="jKey">Security Key</label>
                         <input type="text" id="jKey" placeholder="8-character key" maxlength="8"
                             style="text-transform:uppercase;letter-spacing:.12em" autocomplete="off">
                     </div>
@@ -1482,10 +1482,10 @@
                         <div class="msg sys">Welcome! 👋</div>
                     </div>
                     <div class="chat-inp">
-                        <button class="rxn-btn" onclick="sendReaction('❤️')">❤️</button>
-                        <button class="rxn-btn" onclick="sendReaction('😂')">😂</button>
-                        <input type="text" id="chatIn" placeholder="Say something…" maxlength="200" style="flex:1">
-                        <button class="send-btn" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+                        <button class="rxn-btn" onclick="sendReaction('❤️')" aria-label="Reaction heart">❤️</button>
+                        <button class="rxn-btn" onclick="sendReaction('😂')" aria-label="Reaction laugh">😂</button>
+                        <input type="text" id="chatIn" aria-label="Chat message" placeholder="Say something…" maxlength="200" style="flex:1">
+                        <button class="send-btn" onclick="sendChat()" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
 
