@@ -2109,7 +2109,7 @@
         function onMsg(e) {
             const m = e.data;
             const senderConn = e.conn;
-            if (m.room && m.room !== room.name) return;
+            if (!m || !room || (m.room && m.room !== room.name)) return;
 
             if (!isHost && ['play', 'pause', 'seek', 'heartbeat'].includes(m.type)) {
                 if (Date.now() < guestSyncDelayUntil) {
@@ -2880,38 +2880,40 @@
                 const res = await fetch('/api/auth/me');
                 if (res.ok) {
                     const data = await res.json();
-                    document.getElementById('btnLoginBtn').style.display = 'none';
-                    document.getElementById('btnRegBtn').style.display = 'none';
-                    document.getElementById('authWelcome').style.display = 'flex';
-                    currentUsername = data.username;
-                    
-                    let avatarHtml = '';
-                    if (data.profilePic) {
-                        avatarHtml = `<img src="${data.profilePic}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; cursor:pointer; border: 2px solid var(--rose);" onclick="showProfileModal()" title="${data.username}">`;
+                    if (data.authenticated && data.username) {
+                        document.getElementById('btnLoginBtn').style.display = 'none';
+                        document.getElementById('btnRegBtn').style.display = 'none';
+                        document.getElementById('authWelcome').style.display = 'flex';
+                        currentUsername = data.username;
+                        
+                        let avatarHtml = '';
+                        if (data.profilePic) {
+                            avatarHtml = `<img src="${data.profilePic}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; cursor:pointer; border: 2px solid var(--rose);" onclick="showProfileModal()" title="${data.username}">`;
+                        } else {
+                            let initials = data.username.substring(0,2).toUpperCase();
+                            avatarHtml = `<div style="width:36px; height:36px; border-radius:50%; background:var(--rose); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; cursor:pointer;" onclick="showProfileModal()" title="${data.username}">${initials}</div>`;
+                        }
+                        document.getElementById('authWelcome').innerHTML = avatarHtml;
+                        
+                        isFrozen = data.isFrozen || false;
+                        document.getElementById('btnLogoutBtn').style.display = 'block';
+                        if (data.isAdmin) {
+                            window.location.href = '/admin.html';
+                        }
+                        if (isFrozen) {
+                            applyFrozenUI();
+                        } else {
+                            removeFrozenUI();
+                        }
                     } else {
-                        let initials = data.username.substring(0,2).toUpperCase();
-                        avatarHtml = `<div style="width:36px; height:36px; border-radius:50%; background:var(--rose); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; cursor:pointer;" onclick="showProfileModal()" title="${data.username}">${initials}</div>`;
-                    }
-                    document.getElementById('authWelcome').innerHTML = avatarHtml;
-                    
-                    isFrozen = data.isFrozen || false;
-                    document.getElementById('btnLogoutBtn').style.display = 'block';
-                    if (data.isAdmin) {
-                        window.location.href = '/admin.html';
-                    }
-                    if (isFrozen) {
-                        applyFrozenUI();
-                    } else {
+                        document.getElementById('btnLoginBtn').style.display = 'none';
+                        document.getElementById('btnRegBtn').style.display = 'none';
+                        document.getElementById('authWelcome').style.display = 'none';
+                        document.getElementById('btnLogoutBtn').style.display = 'none';
+                        if (document.getElementById('btnAdminBtn')) document.getElementById('btnAdminBtn').style.display = 'none';
+                        isFrozen = false;
                         removeFrozenUI();
                     }
-                } else {
-                    document.getElementById('btnLoginBtn').style.display = 'none';
-                    document.getElementById('btnRegBtn').style.display = 'none';
-                    document.getElementById('authWelcome').style.display = 'none';
-                    document.getElementById('btnLogoutBtn').style.display = 'none';
-                    if (document.getElementById('btnAdminBtn')) document.getElementById('btnAdminBtn').style.display = 'none';
-                    isFrozen = false;
-                    removeFrozenUI();
                 }
             } catch (e) { }
         }

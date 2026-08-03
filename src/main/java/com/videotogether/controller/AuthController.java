@@ -116,8 +116,11 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> me(Authentication authentication) {
         Map<String, Object> response = new HashMap<>();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            response.put("authenticated", false);
+            return ResponseEntity.ok(response);
         }
+
+        response.put("authenticated", true);
 
         response.put("username", authentication.getName());
         boolean isAdmin = authentication.getAuthorities().stream()
