@@ -1608,7 +1608,8 @@
                     if (blob) {
                         const url = URL.createObjectURL(blob);
                         setPlayerSrc(url, blob.type);
-                        sysMsg('Loaded previously downloaded stream from cache.', true);
+                        sysMsg('Loaded video stream from local device cache. 0 KB data consumed!', true);
+                        toast('Saved internet data! Playing from local device cache.', 'ok');
                         setStatus('wait', 'Waiting for host to sync playback…');
                         if (!sharedListenersAttached) attachSharedListeners();
                     } else {
@@ -2328,6 +2329,17 @@
             gChunks[m.index] = m.data;
             gReceived++;
             document.getElementById('loadBar').style.width = (gReceived / gTotal * 100) + '%';
+
+            // Progressive permanent caching to device storage so data is saved across sessions
+            if (room && room.name && (gReceived % 10 === 0 || gReceived === gTotal)) {
+                try {
+                    const validChunks = gChunks.filter(Boolean);
+                    if (validChunks.length > 0) {
+                        const partialBlob = new Blob(validChunks, { type: gMime });
+                        idbSave(partialBlob, room.name).catch(() => {});
+                    }
+                } catch (_) {}
+            }
 
             // Progressive MSE playback trigger
             if (window.MediaSource && MediaSource.isTypeSupported(gMime)) {
