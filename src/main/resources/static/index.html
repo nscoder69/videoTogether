@@ -2090,15 +2090,22 @@
                 const total = Math.ceil(buffer.byteLength / CHUNK_SIZE);
                 let i = 0;
                 function sendNext() {
+                    if (!conn || !conn.open) return;
                     if (i >= total) {
                         conn.send({ type: 'chunk_end', room: room.name, mime: file.type });
                         sysMsg('File transfer complete!', true);
                         return;
                     }
+                    // Backpressure control: pause chunk sending if DataChannel buffer is full
+                    const dc = conn._dc || conn.dataChannel;
+                    if (dc && dc.bufferedAmount > 128 * 1024) {
+                        setTimeout(sendNext, 20);
+                        return;
+                    }
                     const chunk = buffer.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
                     conn.send({ type: 'chunk', room: room.name, index: i, total: total, data: chunk, mime: file.type });
                     i++;
-                    setTimeout(sendNext, 2);
+                    setTimeout(sendNext, 4);
                 }
                 sendNext();
             };
@@ -2110,13 +2117,6 @@
             const m = e.data;
             const senderConn = e.conn;
             if (!m || !room || (m.room && m.room !== room.name)) return;
-
-            if (!isHost && ['play', 'pause', 'seek', 'heartbeat'].includes(m.type)) {
-                if (Date.now() < guestSyncDelayUntil) {
-                    pendingGuestSyncMessage = m;
-                    return;
-                }
-            }
 
             switch (m.type) {
 
@@ -2277,8 +2277,8 @@
             }
         }
 
-        // Chunks needed before we trigger MSE (~2.5 MB)
-        const START_PLAY_CHUNKS = 40;
+        // Chunks needed before we trigger MSE (~960 KB for fast start)
+        const START_PLAY_CHUNKS = 15;
 
         function onChunk(m) {
             if (gTotal === 0) {
@@ -2354,7 +2354,7 @@
                 });
             }
             if (!isHost) {
-                startGuestSyncDelay();
+                attachSharedListeners();
             }
         }
 
@@ -2416,29 +2416,7 @@
             }, HEARTBEAT_MS);
         }
 
-        function startGuestSyncDelay() {
-            if (isHost) return;
-            if (guestSyncDelayTimeout) {
-                clearTimeout(guestSyncDelayTimeout);
-            }
-            // Set sync delay to 10 seconds to build buffer
-            guestSyncDelayUntil = Date.now() + 10000;
-            pendingGuestSyncMessage = null;
-            sysMsg('Loading media... sync paused for 10s to build buffer');
 
-            guestSyncDelayTimeout = setTimeout(() => {
-                guestSyncDelayUntil = 0;
-                guestSyncDelayTimeout = null;
-                if (pendingGuestSyncMessage) {
-                    sysMsg('Applying delayed sync...');
-                    const mockEvent = { data: pendingGuestSyncMessage };
-                    pendingGuestSyncMessage = null;
-                    onMsg(mockEvent);
-                } else {
-                    sysMsg('Sync active.');
-                }
-            }, 10000);
-        }
 
         function initMSE(mime) {
             if (!window.MediaSource || !MediaSource.isTypeSupported(mime)) {
