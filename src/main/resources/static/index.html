@@ -493,16 +493,88 @@
             letter-spacing: 0.05em;
         }
 
-        /* Controls */
+        /* Single-Line Mobile Control Bar */
+        .controls-bar-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            padding: 10px 12px;
+            background: transparent;
+        }
+
         .controls {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 14px 20px;
-            background: rgba(255, 255, 255, .04);
-            border-top: 1px solid rgba(255, 255, 255, .07);
-            flex-wrap: wrap;
-            justify-content: center
+            justify-content: center;
+            gap: 12px;
+            padding: 8px 20px;
+            background: rgba(18, 12, 28, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 40px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            max-width: 100%;
+            scrollbar-width: none;
+        }
+
+        .controls::-webkit-scrollbar {
+            display: none;
+        }
+
+        .ctrl-icon-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .ctrl-icon-btn:hover, .ctrl-icon-btn:active {
+            background: rgba(255, 255, 255, 0.22);
+            transform: scale(1.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .ctrl-icon-btn:active {
+            transform: scale(0.92);
+        }
+
+        .ctrl-icon-btn.btn-main-play, .ctrl-icon-btn.btn-main-pause {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--rose), #ff4081);
+            border: none;
+            color: #ffffff;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 16px rgba(255, 43, 91, 0.45);
+        }
+
+        .ctrl-icon-btn.btn-main-play:hover, .ctrl-icon-btn.btn-main-pause:hover {
+            box-shadow: 0 6px 20px rgba(255, 43, 91, 0.65);
+            transform: scale(1.1);
+        }
+
+        .ctrl-icon-btn .btn-sub {
+            position: absolute;
+            bottom: 5px;
+            font-size: 0.55rem;
+            font-weight: 800;
+            line-height: 1;
+            color: rgba(255, 255, 255, 0.95);
+            font-family: var(--ff-body);
         }
 
         /* Chat */
@@ -1375,19 +1447,29 @@
                             id="fsChatBadge">!</span></button>
                 </div>
 
-                <div class="controls" id="controlsBar">
-                    <button class="btn btn-rose btn-sm" id="btnPlay" onclick="ctrlPlay()"><i class="fas fa-play"></i>
-                        Play</button>
-                    <button class="btn btn-ghost btn-sm" id="btnPause" onclick="ctrlPause()"><i
-                            class="fas fa-pause"></i> Pause</button>
-                    <button class="btn btn-ghost btn-sm" id="btnBack" onclick="ctrlSeek(-10)"><i
-                            class="fas fa-backward"></i> −10s</button>
-                    <button class="btn btn-ghost btn-sm" id="btnFwd" onclick="ctrlSeek(10)"><i
-                            class="fas fa-forward"></i> +10s</button>
-                    <button class="btn btn-ghost btn-sm" id="btnFullscreen" onclick="toggleFullscreen()"><i
-                            class="fas fa-expand"></i> Full</button>
-                    <button class="btn btn-ghost btn-sm" id="syncToggle" onclick="toggleSync()"><i
-                            class="fas fa-eye"></i> Sync log</button>
+                <div class="controls-bar-container">
+                    <div class="controls" id="controlsBar">
+                        <button class="ctrl-icon-btn" id="btnBack" onclick="ctrlSeek(-10)" title="Rewind 10s">
+                            <i class="fas fa-undo"></i>
+                            <span class="btn-sub">10</span>
+                        </button>
+                        <button class="ctrl-icon-btn btn-main-play" id="btnPlay" onclick="ctrlPlay()" title="Play">
+                            <i class="fas fa-play" style="margin-left:2px"></i>
+                        </button>
+                        <button class="ctrl-icon-btn btn-main-pause" id="btnPause" onclick="ctrlPause()" title="Pause" style="display:none">
+                            <i class="fas fa-pause"></i>
+                        </button>
+                        <button class="ctrl-icon-btn" id="btnFwd" onclick="ctrlSeek(10)" title="Forward 10s">
+                            <i class="fas fa-redo"></i>
+                            <span class="btn-sub">10</span>
+                        </button>
+                        <button class="ctrl-icon-btn" id="btnFullscreen" onclick="toggleFullscreen()" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="ctrl-icon-btn" id="syncToggle" onclick="toggleSync()" title="Sync Log">
+                            <i class="fas fa-list-alt"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="chat-area" id="chatArea">
@@ -2059,9 +2141,12 @@
             saveRoomData();
 
             // Everyone gets playback buttons
-            ['btnPlay', 'btnPause', 'btnBack', 'btnFwd'].forEach(id => {
-                document.getElementById(id).style.display = '';
+            ['btnPlay', 'btnBack', 'btnFwd', 'btnFullscreen', 'syncToggle'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'inline-flex';
             });
+            const pBtn = document.getElementById('btnPause');
+            if (pBtn) pBtn.style.display = 'none';
 
             // Ensure YouTube overlay is hidden so guests can interact with it
             let ytOverlay = document.getElementById('ytOverlay');
@@ -2590,12 +2675,14 @@
             }
             if (action === 'play') {
                 expectedPlayState = 'play';
+                updatePlayPauseBtnUI(true);
                 player.play().catch(err => {
                     if (err.name === 'NotAllowedError') toast('Click anywhere or press play to sync', 'warn');
                 });
             }
             if (action === 'pause') {
                 expectedPlayState = 'pause';
+                updatePlayPauseBtnUI(false);
                 player.pause();
             }
         }
@@ -2642,12 +2729,27 @@
             }
         }
 
+        function updatePlayPauseBtnUI(isPlaying) {
+            const playBtn = document.getElementById('btnPlay');
+            const pauseBtn = document.getElementById('btnPause');
+            if (playBtn && pauseBtn) {
+                if (isPlaying) {
+                    playBtn.style.display = 'none';
+                    pauseBtn.style.display = 'inline-flex';
+                } else {
+                    playBtn.style.display = 'inline-flex';
+                    pauseBtn.style.display = 'none';
+                }
+            }
+        }
+
         function ctrlPlay() {
             if (isHost && isGuestBuffering) {
                 toast('Waiting for guest to finish loading video...', 'warn');
                 showBufferOverlay('Guest is loading video... Please wait');
                 return;
             }
+            updatePlayPauseBtnUI(true);
             if (ytPlayer && room && room.ytId) {
                 ytPlayer.playVideo();
                 bcast({ type: 'play', room: room.name, time: ytPlayer.getCurrentTime() });
@@ -2658,6 +2760,7 @@
             bcast({ type: 'play', room: room.name, time: player.currentTime });
         }
         function ctrlPause() {
+            updatePlayPauseBtnUI(false);
             if (ytPlayer && room && room.ytId) {
                 ytPlayer.pauseVideo();
                 bcast({ type: 'pause', room: room.name, time: ytPlayer.getCurrentTime() });
