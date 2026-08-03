@@ -1455,6 +1455,7 @@
         let mediaMode = 'yt';   // 'yt' | 'file'
         let hostStreamUrl = null;
         let wasPlayingBeforeGuestBuffer = false;
+        let isGuestBuffering = false;
 
         // YouTube IFrame API
         let ytPlayer = null;
@@ -2125,10 +2126,16 @@
                     if (!isHost) return;
                     if (m.key !== room.key) { bcast({ type: 'bad_key', room: room.name }); return; }
                     sysMsg('Guest connected…');
+                    isGuestBuffering = true;
+                    showBufferOverlay('Guest connected... Waiting for guest to load video');
+                    if (ytPlayer && room.ytId && ytPlayer.pauseVideo) {
+                        ytPlayer.pauseVideo();
+                    } else if (player && !player.paused) {
+                        player.pause();
+                    }
                     if (room.ytId) {
                         const t = ytPlayer ? ytPlayer.getCurrentTime() : 0;
-                        const playing = ytPlayer && ytPlayer.getPlayerState() === 1;
-                        bcast({ type: 'yt_load', room: room.name, ytId: room.ytId, time: t, playing });
+                        bcast({ type: 'yt_load', room: room.name, ytId: room.ytId, time: t, playing: false });
                     } else {
                         if (hostFile && senderConn) {
                             sendFileToConn(senderConn, hostFile);
@@ -2159,6 +2166,7 @@
                                     gChunks = []; gTotal = 0; gReceived = 0;
                                     document.getElementById('loadBar').style.width = '100%';
                                     setTimeout(() => { document.getElementById('loadBar').style.width = '0%'; }, 900);
+                                    bcast({ type: 'buffer_end', room: room.name });
                                 }
                             }, 500);
                         } else {
@@ -2189,6 +2197,7 @@
                     setPlayerSrc(m.url, m.mime);
                     setStatus('ok', 'Host connected');
                     attachSharedListeners();
+                    bcast({ type: 'buffer_start', room: room.name });
                     break;
 
                 case 'play':
@@ -2205,7 +2214,8 @@
 
                 case 'buffer_start':
                     if (!isHost) return;
-                    document.getElementById('bufferOverlay').style.display = 'flex';
+                    isGuestBuffering = true;
+                    showBufferOverlay('Guest is loading video... Please wait');
                     if (ytPlayer && room.ytId && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1) {
                         wasPlayingBeforeGuestBuffer = true;
                         ytPlayer.pauseVideo();
@@ -2215,20 +2225,24 @@
                     } else {
                         wasPlayingBeforeGuestBuffer = false;
                     }
-                    syncMsg('Guest is buffering, pausing...');
+                    syncMsg('Guest is buffering, pausing host...');
                     break;
 
                 case 'buffer_end':
                     if (!isHost) return;
-                    document.getElementById('bufferOverlay').style.display = 'none';
+                    isGuestBuffering = false;
+                    hideBufferOverlay();
+                    toast('Guest is ready! Playback synchronized.', 'ok');
                     if (wasPlayingBeforeGuestBuffer) {
                         if (ytPlayer && room.ytId) {
                             ytPlayer.playVideo();
+                            bcast({ type: 'play', room: room.name, time: ytPlayer.getCurrentTime() });
                         } else if (player) {
                             player.play().catch(()=>{});
+                            bcast({ type: 'play', room: room.name, time: player.currentTime });
                         }
                     }
-                    syncMsg('Guest finished buffering.');
+                    syncMsg('Guest finished loading.');
                     break;
 
                 case 'heartbeat':
@@ -2454,13 +2468,9 @@
                         }
                         appendNextMseChunk();
                         mseInitialized = true;
-                        
-                        // Auto play after a short delay
-                        setTimeout(() => {
-                            if (player && player.paused) {
-                                player.play().catch(() => {});
-                            }
-                        }, 500);
+                        if (!isHost && room) {
+                            bcast({ type: 'buffer_end', room: room.name });
+                        }
                     } catch (err) {
                         console.error("Failed to add source buffer, falling back", err);
                         fallbackToFullDownload();
@@ -2571,6 +2581,11 @@
         }
 
         function ctrlPlay() {
+            if (isHost && isGuestBuffering) {
+                toast('Waiting for guest to finish loading video...', 'warn');
+                showBufferOverlay('Guest is loading video... Please wait');
+                return;
+            }
             if (ytPlayer && room && room.ytId) {
                 ytPlayer.playVideo();
                 bcast({ type: 'play', room: room.name, time: ytPlayer.getCurrentTime() });
@@ -2655,6 +2670,19 @@
             bubble.textContent = emoji;
             pa.appendChild(bubble);
             setTimeout(() => { bubble.remove(); }, 2000);
+        }
+
+        function showBufferOverlay(txt) {
+            const overlay = document.getElementById('bufferOverlay');
+            if (overlay) {
+                const p = overlay.querySelector('p');
+                if (p && txt) p.textContent = txt;
+                overlay.style.display = 'flex';
+            }
+        }
+        function hideBufferOverlay() {
+            const overlay = document.getElementById('bufferOverlay');
+            if (overlay) overlay.style.display = 'none';
         }
 
         // ── Draggable Chat ───────────────────────────────────
