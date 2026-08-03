@@ -2166,7 +2166,6 @@
                                     gChunks = []; gTotal = 0; gReceived = 0;
                                     document.getElementById('loadBar').style.width = '100%';
                                     setTimeout(() => { document.getElementById('loadBar').style.width = '0%'; }, 900);
-                                    bcast({ type: 'buffer_end', room: room.name });
                                 }
                             }, 500);
                         } else {
@@ -2291,8 +2290,8 @@
             }
         }
 
-        // Chunks needed before we trigger MSE (~960 KB for fast start)
-        const START_PLAY_CHUNKS = 15;
+        // Chunks needed before we trigger MSE (~512 KB / 5 sec data for fast start)
+        const START_PLAY_CHUNKS = 8;
 
         function onChunk(m) {
             if (gTotal === 0) {
