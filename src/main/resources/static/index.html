@@ -1554,8 +1554,10 @@
             if (!room) return;
             try {
                 let rs = JSON.parse(localStorage.getItem('vt_my_rooms') || '[]');
+                const existing = rs.find(r => r.name === room.name);
+                const lastTime = (player && player.currentTime > 2) ? player.currentTime : (existing ? existing.lastTime : 0);
                 rs = rs.filter(r => r.name !== room.name);
-                rs.unshift({ name: room.name, key: room.key, isHost: isHost, ytId: room.ytId || null, ts: Date.now() });
+                rs.unshift({ name: room.name, key: room.key, isHost: isHost, ytId: room.ytId || null, lastTime: lastTime, ts: Date.now() });
                 if (rs.length > 15) rs = rs.slice(0, 15);
                 localStorage.setItem('vt_my_rooms', JSON.stringify(rs));
                 loadSavedRooms();
@@ -2383,10 +2385,17 @@
                 ap.src = url; ap.style.display = 'block';
                 player = ap;
             }
-            if (resumeTime > 0) {
+
+            if (resumeTime <= 0 && room && room.name) {
+                const saved = localStorage.getItem('vt_progress_' + room.name);
+                if (saved) resumeTime = parseFloat(saved);
+            }
+
+            if (resumeTime > 2) {
                 player.addEventListener('loadedmetadata', function onMeta() {
                     player.removeEventListener('loadedmetadata', onMeta);
                     player.currentTime = resumeTime;
+                    toast('Resumed movie from ' + fmt(resumeTime), 'ok');
                 });
             }
             if (!isHost) {
@@ -2415,9 +2424,23 @@
             player.addEventListener('seeked', () => { 
                 if (expectedSyncTime !== null && Math.abs(player.currentTime - expectedSyncTime) < 1) {
                     expectedSyncTime = null;
-                    return;
+                } else {
+                    bcast({ type: 'seek', room: room.name, time: player.currentTime });
                 }
-                bcast({ type: 'seek', room: room.name, time: player.currentTime }); 
+                // Automatically resume play mode if video was playing before seek
+                if (expectedPlayState === 'play' && player.paused) {
+                    player.play().catch(() => {});
+                }
+            });
+            player.addEventListener('canplay', () => {
+                if (expectedPlayState === 'play' && player.paused) {
+                    player.play().catch(() => {});
+                }
+            });
+            player.addEventListener('timeupdate', () => {
+                if (room && room.name && player && player.currentTime > 2) {
+                    localStorage.setItem('vt_progress_' + room.name, player.currentTime);
+                }
             });
             player.addEventListener('waiting', () => {
                 if (!isHost) {
@@ -2544,9 +2567,14 @@
             }
             if (!player) return;
             
+            const wasPlaying = !player.paused || action === 'play' || expectedPlayState === 'play';
+
             if (action === 'seek' || Math.abs(player.currentTime - time) > 1) {
                 expectedSyncTime = time;
                 player.currentTime = time;
+                if (wasPlaying) {
+                    expectedPlayState = 'play';
+                }
             }
             if (action === 'play') {
                 expectedPlayState = 'play';
